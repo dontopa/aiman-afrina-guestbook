@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Aiman & Afrina | Digital Wedding Guestbook & Live Photo Gallery</title>
+
+  <!-- Primary Meta Tags & SEO -->
+  <meta name="title" content="Aiman & Afrina | Digital Wedding Guestbook & Live Photo Gallery" />
+  <meta name="description" content="Tangkap memori dan kongsi foto & boomerang di Majlis Perkahwinan Aiman & Afrina pada 12 Disember 2026. #AimanAfrina" />
+
+  <!-- Open Graph / WhatsApp Sharing -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Aiman & Afrina | Digital Wedding Guestbook & Live Photo Gallery" />
+  <meta property="og:description" content="Kongsi ucapan & foto polaroid kenangan indah bersama pasangan pengantin Aiman & Afrina! #AimanAfrina" />
+  <meta property="og:image" content="assets/images/polaroid1.png" />
+
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            blush: {
+              50: '#fcf0f2',
+              100: '#f9e2e6',
+              200: '#f3c7d0',
+              300: '#e99eb0',
+              400: '#dc6d88',
+              500: '#c2417c',
+              600: '#a62d64',
+              700: '#8b1d52',
+              800: '#6d1e4a',
+              900: '#4d1334',
+            },
+            cream: {
+              DEFAULT: '#ffffff',
+              soft: '#fdfbf7',
+              dark: '#f7f2ea'
+            },
+            burgundy: {
+              DEFAULT: '#c2417c',
+              dark: '#6d1e4a',
+              deep: '#4d1334'
+            }
+          },
+          fontFamily: {
+            script: ['"Alex Brush"', 'cursive'],
+            heading: ['"Cormorant Garamond"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          boxShadow: {
+            polaroid: '0 10px 25px -5px rgba(109, 30, 74, 0.15), 0 8px 10px -6px rgba(109, 30, 74, 0.1)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- React 18, ReactDOM & Babel -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-[#f8ecee] selection:bg-[#c2417c] selection:text-white">
+
+  <!-- React Root Element -->
+  <div id="root"></div>
+
+  <!-- React Application Logic -->
+  <script type="text/babel" src="app.js"></script>
+
+</body>
+</html>
