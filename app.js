@@ -626,35 +626,32 @@ function App() {
           </div>
         </button>
 
-        {/* ------------------- APP HEADER ------------------- */}
-        <header className="sticky top-0 z-30 bg-[#fcf0f2]/90 backdrop-blur-md border-b border-pink-100 px-4 py-3 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-2">
-            {activeTab !== 'home' ? (
+        {/* ------------------- APP HEADER (Hidden on Home Page) ------------------- */}
+        {activeTab !== 'home' && (
+          <header className="sticky top-0 z-30 bg-[#fcf0f2]/90 backdrop-blur-md border-b border-pink-100 px-4 py-3 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setActiveTab('home')}
-                className="p-1.5 rounded-full hover:bg-pink-100 text-blush-600 transition"
+                className="p-1.5 rounded-full hover:bg-pink-100 text-blush-600 transition flex items-center gap-1.5 text-xs font-bold text-[#c2417c]"
               >
-                <i className="fa-solid fa-arrow-left text-base text-[#c2417c]"></i>
+                <i className="fa-solid fa-arrow-left text-base"></i>
+                <span>Utama</span>
               </button>
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blush-500 to-pink-300 text-white font-bold flex items-center justify-center text-xs shadow-md">
-                A&A
+              <div>
+                <span className="text-[11px] font-bold tracking-widest text-[#c2417c] uppercase block">#AimanAfrina</span>
+                <h1 className="text-xs font-semibold text-gray-700">Digital Guestbook & Live Gallery</h1>
               </div>
-            )}
-            <div>
-              <span className="text-[11px] font-bold tracking-widest text-[#c2417c] uppercase block">#AimanAfrina</span>
-              <h1 className="text-xs font-semibold text-gray-700">Digital Guestbook & Live Gallery</h1>
             </div>
-          </div>
 
-          <button
-            onClick={() => handleOpenUpload('photo')}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-[#c2417c] to-pink-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md hover:opacity-90 active:scale-95 transition"
-          >
-            <i className="fa-solid fa-camera"></i>
-            <span>+ Kongsi</span>
-          </button>
-        </header>
+            <button
+              onClick={() => handleOpenUpload('photo')}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-[#c2417c] to-pink-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md hover:opacity-90 active:scale-95 transition"
+            >
+              <i className="fa-solid fa-camera"></i>
+              <span>+ Kongsi</span>
+            </button>
+          </header>
+        )}
 
         {/* ------------------- MAIN CONTENT SWITCHER ------------------- */}
         <main className="flex-1">
@@ -896,31 +893,23 @@ function HeroSection({ onOpenUpload, onGoToGallery, totalMemories, totalGuests }
         </div>
       </div>
 
-      <div className="w-full grid grid-cols-2 gap-3 px-2 pt-2">
+      <div className="w-full grid grid-cols-2 gap-2.5 px-1 pt-2">
+        <button
+          onClick={onGoToGallery}
+          className="w-full bg-gradient-to-r from-[#c2417c] to-pink-600 hover:opacity-95 text-white text-xs font-extrabold py-3.5 px-2 rounded-2xl shadow-lg flex items-center justify-center gap-1.5 transition active:scale-95 glow-pulsing text-center"
+        >
+          <i className="fa-solid fa-book-open text-sm"></i>
+          <span>📖 MASUK GUESTBOOK & GALERI</span>
+        </button>
+
         <button
           onClick={() => onOpenUpload('photo')}
-          className="w-full bg-white border-2 border-[#c2417c] text-[#c2417c] hover:bg-pink-50 text-xs font-bold py-3 px-3 rounded-2xl shadow-md flex items-center justify-center gap-2 transition active:scale-95"
+          className="w-full bg-white border-2 border-[#c2417c] text-[#c2417c] hover:bg-pink-50 text-xs font-extrabold py-3.5 px-2 rounded-2xl shadow-md flex items-center justify-center gap-1.5 transition active:scale-95 text-center"
         >
-          <i className="fa-solid fa-camera text-base"></i>
-          <span>📷 FOTO</span>
-        </button>
-
-        <button
-          onClick={() => onOpenUpload('boomerang')}
-          className="w-full bg-[#c2417c] hover:bg-blush-600 text-white text-xs font-bold py-3 px-3 rounded-2xl shadow-md flex items-center justify-center gap-2 transition active:scale-95 glow-pulsing"
-        >
-          <i className="fa-solid fa-video text-base"></i>
-          <span>📹 BOOMERANG</span>
+          <i className="fa-solid fa-camera text-sm"></i>
+          <span>📷 MUAT NAIK MEMORI</span>
         </button>
       </div>
-
-      <button
-        onClick={onGoToGallery}
-        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#c2417c] hover:underline pt-1 transition"
-      >
-        <span>LIHAT GALERI</span>
-        <i className="fa-solid fa-chevron-right text-xs"></i>
-      </button>
 
       <div className="w-full bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-pink-100 shadow-sm mt-4">
         <h4 className="text-xs font-bold text-blush-800 uppercase tracking-wider mb-3 flex items-center justify-center gap-1.5">
