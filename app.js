@@ -820,25 +820,20 @@ function HeroSection({ onOpenUpload, onGoToGallery, totalMemories, totalGuests }
   return (
     <div className="flex flex-col items-center text-center px-4 py-6 space-y-6">
       
-      <div className="flex flex-col items-center space-y-1">
-        <div className="w-14 h-14 rounded-full bg-white border-2 border-blush-400 p-1 shadow-md flex items-center justify-center">
-          <div className="w-full h-full rounded-full border border-dashed border-blush-400 flex items-center justify-center bg-blush-50">
-            <span className="font-script text-2xl text-blush-600 font-bold">A&A</span>
-          </div>
-        </div>
-        <span className="text-[11px] font-semibold text-blush-600 uppercase tracking-widest mt-1">
-          Walimatulurus
+      <div className="flex flex-col items-center pt-2">
+        <span className="bg-pink-100/80 border border-pink-200 text-[#c2417c] text-[11px] font-extrabold px-4 py-1 rounded-full uppercase tracking-[0.25em] shadow-sm">
+          WALIMATULURUS
         </span>
       </div>
 
-      <div>
-        <h2 className="font-script text-5xl text-[#c2417c] font-bold drop-shadow-sm leading-tight">
+      <div className="space-y-1">
+        <h2 className="font-script text-5xl sm:text-6xl text-[#c2417c] font-bold drop-shadow-sm leading-tight py-1">
           Aiman & Afrina
         </h2>
-        <p className="font-script text-2xl text-blush-800 -mt-1">
+        <p className="font-cinzel text-lg sm:text-xl font-extrabold text-[#6d1e4a] tracking-[0.2em] uppercase">
           MAJLIS PERKAHWINAN
         </p>
-        <h3 className="text-xs font-bold text-gray-600 tracking-wider uppercase mt-1">
+        <h3 className="font-sans text-xs font-bold text-gray-500 tracking-[0.18em] uppercase pt-1">
           Tangkap Memori Bersama
         </h3>
       </div>
