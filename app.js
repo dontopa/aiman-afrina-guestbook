@@ -5,6 +5,16 @@ const { useState, useEffect, useRef, useMemo, Component } = React;
 const SUPABASE_URL = "https://nqxnkukeacguhgkbzmum.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xeG5rdWtlYWNndWhna2J6bXVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMTU1OTgsImV4cCI6MjEwMTY5MTU5OH0.qLLVSBV_oGh2gkvFmBcCE2otz5wwLT8akDblU0rOKIg";
 
+// Cloudflare R2 S3 Bucket Configuration (Zero Egress Bandwidth Fees)
+const R2_CONFIG = {
+  accountId: '42e6d6fbb5199a87cbf2d8c077395d6e',
+  bucketName: 'raikanmomen-media',
+  publicDomain: 'https://cdn.raikanmomen.my',
+  accessKeyId: '738f8faed64b04ce80a5e1c78c639a22',
+  secretAccessKey: '47119f5242708c539c7c8952cef085b4afebbd34ee42ca7fde65556960518343',
+  region: 'auto'
+};
+
 // Initialize Supabase Client
 let supabaseClient = null;
 try {
@@ -13,6 +23,184 @@ try {
   }
 } catch (e) {
   console.warn("Supabase init error:", e);
+}
+
+// Helper: HMAC SHA256 using native Web Crypto API
+async function hmacSha256(key, data) {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    typeof key === 'string' ? new TextEncoder().encode(key) : key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, typeof data === 'string' ? new TextEncoder().encode(data) : data);
+  return new Uint8Array(signature);
+}
+
+// Helper: Convert ArrayBuffer to Hex String
+function bufToHex(buffer) {
+  return Array.from(new Uint8Array(buffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Helper: SHA256 Hash using native Web Crypto API
+async function sha256Hex(data) {
+  const encoded = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  const hash = await crypto.subtle.digest('SHA-256', encoded);
+  return bufToHex(hash);
+}
+
+// Helper: Upload file to Cloudflare R2 Bucket via S3 SigV4 (Zero Egress Bandwidth Fees)
+async function uploadToCloudflareR2(fileOrBlob, fileName, contentType = 'image/jpeg') {
+  try {
+    const date = new Date();
+    const isoDate = date.toISOString().replace(/[:-]|\.\d{3}/g, ''); // YYYYMMDDTHHMMSSZ
+    const dateStamp = isoDate.substring(0, 8); // YYYYMMDD
+    const region = R2_CONFIG.region;
+    const service = 's3';
+
+    const host = `${R2_CONFIG.accountId}.r2.cloudflarestorage.com`;
+    const endpoint = `https://${host}/${R2_CONFIG.bucketName}/${fileName}`;
+    const payloadHash = 'UNSIGNED-PAYLOAD';
+
+    const headersToSign = {
+      'host': host,
+      'x-amz-content-sha256': payloadHash,
+      'x-amz-date': isoDate
+    };
+
+    if (contentType) {
+      headersToSign['content-type'] = contentType;
+    }
+
+    const sortedHeaderKeys = Object.keys(headersToSign).sort();
+    const canonicalHeaders = sortedHeaderKeys.map(k => `${k}:${headersToSign[k]}\n`).join('');
+    const signedHeaders = sortedHeaderKeys.join(';');
+
+    const canonicalRequest = [
+      'PUT',
+      `/${R2_CONFIG.bucketName}/${fileName}`,
+      '',
+      canonicalHeaders,
+      signedHeaders,
+      payloadHash
+    ].join('\n');
+
+    const canonicalRequestHash = await sha256Hex(canonicalRequest);
+    const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+    const stringToSign = [
+      'AWS4-HMAC-SHA256',
+      isoDate,
+      credentialScope,
+      canonicalRequestHash
+    ].join('\n');
+
+    const kDate = await hmacSha256(`AWS4${R2_CONFIG.secretAccessKey}`, dateStamp);
+    const kRegion = await hmacSha256(kDate, region);
+    const kService = await hmacSha256(kRegion, service);
+    const kSigning = await hmacSha256(kService, 'aws4_request');
+
+    const signature = bufToHex(await hmacSha256(kSigning, stringToSign));
+    const authorizationHeader = `AWS4-HMAC-SHA256 Credential=${R2_CONFIG.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+    const requestHeaders = {
+      'x-amz-date': isoDate,
+      'x-amz-content-sha256': payloadHash,
+      'Authorization': authorizationHeader
+    };
+    if (contentType) {
+      requestHeaders['Content-Type'] = contentType;
+    }
+
+    const response = await fetch(endpoint, {
+      method: 'PUT',
+      headers: requestHeaders,
+      body: fileOrBlob
+    });
+
+    if (response.ok) {
+      const publicUrl = `${R2_CONFIG.publicDomain.replace(/\/$/, '')}/${fileName}`;
+      console.log("Cloudflare R2 Upload Success:", publicUrl);
+      return { success: true, publicUrl };
+    } else {
+      const errText = await response.text();
+      console.warn("Cloudflare R2 Upload API Error:", response.status, errText);
+      return { success: false, error: errText };
+    }
+  } catch (err) {
+    console.warn("Cloudflare R2 Upload Exception:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+// Helper: Delete file from Cloudflare R2 Bucket via S3 SigV4
+async function deleteFromCloudflareR2(fileName) {
+  try {
+    if (!fileName) return;
+    const date = new Date();
+    const isoDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '');
+    const dateStamp = isoDate.substring(0, 8);
+    const region = R2_CONFIG.region;
+    const service = 's3';
+
+    const host = `${R2_CONFIG.accountId}.r2.cloudflarestorage.com`;
+    const endpoint = `https://${host}/${R2_CONFIG.bucketName}/${fileName}`;
+    const payloadHash = 'UNSIGNED-PAYLOAD';
+
+    const headersToSign = {
+      'host': host,
+      'x-amz-content-sha256': payloadHash,
+      'x-amz-date': isoDate
+    };
+
+    const sortedHeaderKeys = Object.keys(headersToSign).sort();
+    const canonicalHeaders = sortedHeaderKeys.map(k => `${k}:${headersToSign[k]}\n`).join('');
+    const signedHeaders = sortedHeaderKeys.join(';');
+
+    const canonicalRequest = [
+      'DELETE',
+      `/${R2_CONFIG.bucketName}/${fileName}`,
+      '',
+      canonicalHeaders,
+      signedHeaders,
+      payloadHash
+    ].join('\n');
+
+    const canonicalRequestHash = await sha256Hex(canonicalRequest);
+    const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+    const stringToSign = [
+      'AWS4-HMAC-SHA256',
+      isoDate,
+      credentialScope,
+      canonicalRequestHash
+    ].join('\n');
+
+    const kDate = await hmacSha256(`AWS4${R2_CONFIG.secretAccessKey}`, dateStamp);
+    const kRegion = await hmacSha256(kDate, region);
+    const kService = await hmacSha256(kRegion, service);
+    const kSigning = await hmacSha256(kService, 'aws4_request');
+
+    const signature = bufToHex(await hmacSha256(kSigning, stringToSign));
+    const authorizationHeader = `AWS4-HMAC-SHA256 Credential=${R2_CONFIG.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+    const response = await fetch(endpoint, {
+      method: 'DELETE',
+      headers: {
+        'x-amz-date': isoDate,
+        'x-amz-content-sha256': payloadHash,
+        'Authorization': authorizationHeader
+      }
+    });
+
+    if (response.ok || response.status === 204 || response.status === 404) {
+      console.log("File successfully deleted from Cloudflare R2:", fileName);
+      return { success: true };
+    }
+  } catch (err) {
+    console.warn("Cloudflare R2 Delete exception:", err);
+  }
 }
 
 // Helper: Human-Readable Relative Time Ago (Handles UTC & Local Timezone Offsets)
@@ -619,11 +807,14 @@ function App() {
     triggerToast(`Memori daripada "${targetItem.guestName}" berjaya dipulihkan! 🔄✨`);
   };
 
-// Helper: Extract Storage file path from Supabase Public URL
+// Helper: Extract Storage file path from Public URL (Supabase or Cloudflare R2)
 function extractSupabaseStoragePath(url) {
   if (!url || typeof url !== 'string') return null;
   let rawPath = null;
-  if (url.includes('/storage/v1/object/public/wedding-memories/')) {
+  if (url.includes('cdn.raikanmomen.my/')) {
+    const parts = url.split('cdn.raikanmomen.my/');
+    if (parts.length > 1) rawPath = parts[1];
+  } else if (url.includes('/storage/v1/object/public/wedding-memories/')) {
     const parts = url.split('/storage/v1/object/public/wedding-memories/');
     if (parts.length > 1) rawPath = parts[1];
   } else if (url.includes('wedding-memories/')) {
@@ -640,7 +831,7 @@ function extractSupabaseStoragePath(url) {
   return null;
 }
 
-  // 3. Permanent Delete from BIN & Supabase Database & Supabase Storage Bucket
+  // 3. Permanent Delete from BIN & Supabase Database & Cloudflare R2 / Supabase Storage Bucket
   const handlePermanentDeleteMemory = async (id, guestName) => {
     if (!window.confirm(`⚠️ AMARAN: Adakah anda pasti mahu MEMADAM SEPENUHNYA memori daripada "${guestName}" daripada DATABASE & STORAGE? Tindakan ini tidak boleh dibatalkan!`)) return;
 
@@ -661,21 +852,19 @@ function extractSupabaseStoragePath(url) {
           await supabaseClient.from('memories').delete().eq('id', stringId);
         }
 
-        // B. Delete File from Supabase Storage Bucket 'wedding-memories'
+        // B. Delete File from Cloudflare R2 Storage Bucket
         if (targetItem && targetItem.imageUrl) {
           const filePath = extractSupabaseStoragePath(targetItem.imageUrl);
           if (filePath) {
-            console.log("Memadam fail daripada Storage Bucket 'wedding-memories':", filePath);
-            const { data: removeRes, error: storageErr } = await supabaseClient.storage
-              .from('wedding-memories')
-              .remove([filePath]);
+            console.log("Memadam fail daripada Storage Bucket (R2 / Supabase):", filePath);
             
-            if (storageErr) {
-              console.error("Supabase Storage Delete Policy Error:", storageErr.message || storageErr);
-              triggerToast(`⚠️ Rekod dipadam, tetapi Storage file perlukan kebenaran DELETE di Supabase Dashboard.`);
-            } else {
-              console.log("Fail Storage berjaya dipadam:", removeRes);
-            }
+            // Delete from Cloudflare R2
+            await deleteFromCloudflareR2(filePath);
+
+            // Delete from Supabase Storage
+            try {
+              await supabaseClient.storage.from('wedding-memories').remove([filePath]);
+            } catch(e) {}
           }
         }
       } catch (err) {
@@ -827,26 +1016,34 @@ function extractSupabaseStoragePath(url) {
 
     let finalUploadedUrl = null;
 
-    if (supabaseClient && selectedFileObj) {
+    if (selectedFileObj) {
       try {
         const fileExt = isVideoMedia ? 'mp4' : 'jpg';
         const fileName = `memory-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const contentType = isVideoMedia ? 'video/mp4' : 'image/jpeg';
         
-        const { data: uploadData, error: uploadErr } = await supabaseClient.storage
-          .from('wedding-memories')
-          .upload(fileName, selectedFileObj, { cacheControl: '3600', upsert: true });
-
-        if (!uploadErr && uploadData) {
-          const { data: publicUrlObj } = supabaseClient.storage
+        // Primary Upload: Cloudflare R2 Bucket (Zero Egress Bandwidth Fees)
+        const r2Result = await uploadToCloudflareR2(selectedFileObj, fileName, contentType);
+        if (r2Result && r2Result.success && r2Result.publicUrl) {
+          finalUploadedUrl = r2Result.publicUrl;
+        } else if (supabaseClient) {
+          // Fallback Upload: Supabase Storage
+          const { data: uploadData, error: uploadErr } = await supabaseClient.storage
             .from('wedding-memories')
-            .getPublicUrl(fileName);
-          
-          if (publicUrlObj && publicUrlObj.publicUrl) {
-            finalUploadedUrl = publicUrlObj.publicUrl;
+            .upload(fileName, selectedFileObj, { cacheControl: '3600', upsert: true });
+
+          if (!uploadErr && uploadData) {
+            const { data: publicUrlObj } = supabaseClient.storage
+              .from('wedding-memories')
+              .getPublicUrl(fileName);
+            
+            if (publicUrlObj && publicUrlObj.publicUrl) {
+              finalUploadedUrl = publicUrlObj.publicUrl;
+            }
           }
         }
       } catch (err) {
-        console.warn("Supabase Storage exception:", err);
+        console.warn("Storage upload exception:", err);
       }
     }
 
